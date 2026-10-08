@@ -45,49 +45,6 @@ def get_status():
     return jsonify({"status": "success", "message": "Backend is running and DB is connected!"}), 200
 
 # ------------------------------------------
-# MODULE 1: Task-Aware Intelligent Academic Q&A
-# ------------------------------------------
-@app.route('/api/chat', methods=['POST'])
-def chat_with_ai():
-    data = request.get_json() or {}
-    query = data.get('query', '')
-    
-    if not query:
-        return jsonify({"error": "Query is required"}), 400
-
-    try:
-        # Fetch pending tasks directly from SQLite
-        pending_tasks = Task.query.filter_by(status="Pending").all()
-        if pending_tasks:
-            task_list_str = "\n".join([f"- {t.title} (Deadline: {t.deadline}, Priority: {t.priority})" for t in pending_tasks])
-        else:
-            task_list_str = "No pending tasks found."
-
-        # Dynamically inject database context into the AI system prompt
-        system_prompt = (
-            "You are a helpful AI Autonomous College Assistant. Give concise, academic answers.\n\n"
-            f"CURRENT PENDING STUDENT TASKS:\n{task_list_str}\n\n"
-            "If the student asks about their tasks, schedule, upcoming deadlines, or priorities, "
-            "use the pending task details above to provide accurate answers."
-        )
-
-        chat_completion = ai_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": query}
-            ],
-            model="openai/gpt-oss-20b",
-        )
-        
-        return jsonify({
-            "response": chat_completion.choices[0].message.content,
-            "sources": ["Groq Base Model", "SQLite Database (Task Tracker)"]
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ------------------------------------------
 # MODULE 2: Autonomous Study Planner (Dynamic AI)
 # ------------------------------------------
 @app.route('/api/study-plan/generate', methods=['POST'])

@@ -1,0 +1,12 @@
+export default function PageHeader({ eyebrow, title, description, action }) {
+  return (
+    <div className="page-header">
+      <div>
+        {eyebrow ? <div className="eyebrow">{eyebrow}</div> : null}
+        <h1>{title}</h1>
+        {description ? <p>{description}</p> : null}
+      </div>
+      {action ? <div className="page-header__action">{action}</div> : null}
+    </div>
+  );
+}
