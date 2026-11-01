@@ -11,6 +11,7 @@ const navigation = [
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const role = localStorage.getItem('userRole');
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -43,7 +44,31 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        <div className="sidebar-note">
+        <button 
+          type="button"
+          onClick={() => { localStorage.clear(); window.location.reload(); }}
+          style={{
+            marginTop: 'auto',
+            marginBottom: '12px',
+            width: '100%',
+            padding: '10px 14px', 
+            background: '#dc2626', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '8px', 
+            cursor: 'pointer',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)', 
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          Log Out {role ? `(${role})` : ''}
+        </button>
+
+        <div className="sidebar-note" style={{ marginTop: 0 }}>
           <span className="sidebar-note__dot" />
           <div>
             <strong>SDG 4 · Quality Education</strong>
