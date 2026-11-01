@@ -1,116 +1,113 @@
-import { useState } from 'react';
-import PageHeader from '../components/PageHeader';
-import IntegrationNotice from '../components/IntegrationNotice';
-import Loader from '../components/Loader';
-import StatusMessage from '../components/StatusMessage';
-import StructuredResult from '../components/StructuredResult';
-import { analyzeSkillGap, generateInterviewPrep } from '../services/careerService';
-import { apiConfig } from '../services/config';
-import { getFriendlyApiError } from '../services/apiClient';
+import React, { useState } from 'react';
 
-export default function CareerAdvisorPage() {
-  const [mode, setMode] = useState('skills');
-  const [form, setForm] = useState({ domain: '', currentSkills: '', targetRole: '', context: '' });
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+const CareerAdvisor = () => {
+  const [domain, setDomain] = useState('Full-Stack Web Development');
   const [loading, setLoading] = useState(false);
+  const [careerData, setCareerData] = useState(null);
+  const [error, setError] = useState('');
 
-  const configured = mode === 'skills' ? apiConfig.endpoints.careerSkillGap : apiConfig.endpoints.careerInterview;
-  const envName = mode === 'skills' ? 'VITE_API_CAREER_SKILL_GAP_ENDPOINT' : 'VITE_API_CAREER_INTERVIEW_ENDPOINT';
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const generateRecommendations = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
-    setResult(null);
+    setCareerData(null);
+
     try {
-      const payload = {
-        domainInterest: form.domain.trim(),
-        currentSkills: form.currentSkills.split(',').map((item) => item.trim()).filter(Boolean),
-        targetRole: form.targetRole.trim() || undefined,
-        context: form.context.trim() || undefined,
-      };
-      const data = mode === 'skills' ? await analyzeSkillGap(payload) : await generateInterviewPrep(payload);
-      setResult(data);
-    } catch (requestError) {
-      setError(getFriendlyApiError(requestError));
+      const response = await fetch('http://localhost:5000/api/career/recommend', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ domain }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch career recommendations');
+      }
+
+      const data = await response.json();
+      setCareerData(data);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Module 4 · SDG 4 support"
-        title="Career & Skill Readiness Advisor"
-        description="Identify skill gaps and prepare targeted interview or aptitude practice for upcoming placement opportunities."
-      />
+    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+      <h1 style={{ color: '#1e3a8a', marginBottom: '1rem' }}>AI Career & Skill Readiness Advisor</h1>
+      <p style={{ color: '#4b5563', marginBottom: '2rem' }}>
+        Generate target skills, required tools, and technical interview questions for your next placement drive.
+      </p>
 
-      <div className="choice-cards">
-        <button type="button" className={`choice-card ${mode === 'skills' ? 'choice-card--active' : ''}`} onClick={() => { setMode('skills'); setResult(null); setError(''); }}>
-          <strong>Skill-gap analysis</strong>
-          <span>Skills, certifications, and electives based on domain interest.</span>
+      <form onSubmit={generateRecommendations} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        <input
+          type="text"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder="e.g., Software Architecture, Data Engineering, B2B Lead Gen..."
+          style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '1rem' }}
+          required
+        />
+        <button 
+          type="submit" 
+          disabled={loading}
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: loading ? '#93c5fd' : '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '1rem',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          {loading ? 'Analyzing...' : 'Generate Roadmap'}
         </button>
-        <button type="button" className={`choice-card ${mode === 'interview' ? 'choice-card--active' : ''}`} onClick={() => { setMode('interview'); setResult(null); setError(''); }}>
-          <strong>Placement & interview prep</strong>
-          <span>Practice questions and structured preparation for recruitment drives.</span>
-        </button>
-      </div>
+      </form>
 
-      {!configured ? <IntegrationNotice envName={envName} /> : null}
+      {error && (
+        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '6px' }}>
+          {error}
+        </div>
+      )}
 
-      <div className="two-column-layout">
-        <section className="panel">
-          <div className="panel__heading">
-            <div>
-              <span className="eyebrow">Student profile input</span>
-              <h2>{mode === 'skills' ? 'Analyze readiness' : 'Prepare for placement'}</h2>
-            </div>
+      {careerData && (
+        <div style={{ animation: 'fadeIn 0.5s', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a' }}>🎯 Recommended Skills for {careerData.domain_selected}</h3>
+            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#334155', lineHeight: '1.6' }}>
+              {careerData.recommended_skills.map((skill, index) => (
+                <li key={index}>{skill}</li>
+              ))}
+            </ul>
           </div>
-          <form className="form-stack" onSubmit={handleSubmit}>
-            <label className="field">
-              <span className="field__label">Domain interest</span>
-              <input value={form.domain} onChange={(event) => setForm({ ...form, domain: event.target.value })} required placeholder="Web Development, ML, Data Science…" />
-            </label>
-            <label className="field">
-              <span className="field__label">Current skills</span>
-              <input value={form.currentSkills} onChange={(event) => setForm({ ...form, currentSkills: event.target.value })} placeholder="Java, Python, React, SQL" />
-              <span className="field__hint">Enter comma-separated skills.</span>
-            </label>
-            <label className="field">
-              <span className="field__label">Target role or placement area</span>
-              <input value={form.targetRole} onChange={(event) => setForm({ ...form, targetRole: event.target.value })} placeholder="Software Engineer" />
-            </label>
-            <label className="field">
-              <span className="field__label">Additional context</span>
-              <textarea rows="4" value={form.context} onChange={(event) => setForm({ ...form, context: event.target.value })} placeholder="Upcoming drive, weak topics, preferred certification path, or other context" />
-            </label>
-            <button className="button button--primary" type="submit" disabled={loading || !form.domain.trim()}>
-              {loading ? 'Analyzing…' : mode === 'skills' ? 'Analyze skill gap' : 'Generate practice set'}
-            </button>
-          </form>
-        </section>
 
-        <section className="panel panel--result">
-          <div className="panel__heading">
-            <div>
-              <span className="eyebrow">Advisor output</span>
-              <h2>Recommendations</h2>
-            </div>
+          <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a' }}>⚙️ Key Tools & Frameworks</h3>
+            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#334155', lineHeight: '1.6' }}>
+              {careerData.key_tools_frameworks.map((tool, index) => (
+                <li key={index}>{tool}</li>
+              ))}
+            </ul>
           </div>
-          {loading ? <Loader label="Preparing recommendations…" /> : null}
-          {error ? <StatusMessage type="error" title="Career advisor request failed">{error}</StatusMessage> : null}
-          {!loading && !error && !result ? (
-            <div className="result-placeholder">
-              <div className="result-placeholder__mark">C</div>
-              <h3>No recommendations yet</h3>
-              <p>The backend response will appear here after the corresponding career endpoint is configured.</p>
-            </div>
-          ) : null}
-          {result ? <StructuredResult data={result} /> : null}
-        </section>
-      </div>
-    </>
+
+          <div style={{ padding: '1.5rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e40af' }}>💡 Practice Interview Question</h3>
+            <p style={{ margin: '0 0 1rem 0', color: '#1e3a8a', fontWeight: '500', fontSize: '1.1rem' }}>
+              "{careerData.practice_question}"
+            </p>
+            <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e40af', fontSize: '0.9rem', textTransform: 'uppercase' }}>How to Answer:</h4>
+            <p style={{ margin: 0, color: '#1e3a8a' }}>{careerData.answer_hint}</p>
+          </div>
+
+        </div>
+      )}
+    </div>
   );
-}
+};
+
+export default CareerAdvisor;

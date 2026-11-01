@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import IntegrationNotice from '../components/IntegrationNotice';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import StatusMessage from '../components/StatusMessage';
@@ -15,14 +14,14 @@ const initialForm = { title: '', type: 'Assignment', deadline: '', difficulty: '
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [form, setForm] = useState(initialForm);
-  const [loading, setLoading] = useState(Boolean(apiConfig.endpoints.taskList));
+  const [loading, setLoading] = useState(true); // Forced true for initial load
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('');
 
   const loadTasks = useCallback(async () => {
-    if (!apiConfig.endpoints.taskList) return;
     setLoading(true);
     setError('');
     try {
@@ -68,6 +67,39 @@ export default function TasksPage() {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError('');
+    setSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const baseUrl = apiConfig.baseURL || 'http://127.0.0.1:5000';
+      const response = await fetch(`${baseUrl}/api/upload-syllabus`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setSuccess(data.message);
+        await loadTasks();
+      } else {
+        setError(data.error || 'Failed to extract tasks from syllabus.');
+      }
+    } catch (err) {
+      setError('Network error: Ensure your Flask server is running.');
+    } finally {
+      setUploading(false);
+      event.target.value = ''; // Reset file input
+    }
+  };
+
   const handleToggleComplete = async (task, index) => {
     const id = getTaskId(task, index);
     const current = String(getTaskStatus(task)).toLowerCase();
@@ -99,12 +131,10 @@ export default function TasksPage() {
         eyebrow="Module 3"
         title="Smart Task & Deadline Tracker"
         description="Track lab assignments, project milestones, and academic deadlines with backend-driven status and priority information."
-        action={apiConfig.endpoints.taskList ? <button type="button" className="button button--secondary" onClick={loadTasks}><Icon name="refresh" size={16} /> Refresh</button> : null}
+        action={<button type="button" className="button button--secondary" onClick={loadTasks}><Icon name="refresh" size={16} /> Refresh</button>}
       />
 
-      {!apiConfig.endpoints.taskList ? <IntegrationNotice envName="VITE_API_TASKS_LIST_ENDPOINT" /> : null}
-
-      {error ? <StatusMessage type="error" title="Task request failed">{error}</StatusMessage> : null}
+      {error ? <StatusMessage type="error" title="Action failed">{error}</StatusMessage> : null}
       {success ? <StatusMessage type="success" title={success} /> : null}
 
       <div className="task-layout">
@@ -115,7 +145,7 @@ export default function TasksPage() {
               <h2>New task</h2>
             </div>
           </div>
-          {!apiConfig.endpoints.taskCreate ? <IntegrationNotice envName="VITE_API_TASKS_CREATE_ENDPOINT" /> : null}
+          
           <form className="form-stack" onSubmit={handleCreate}>
             <label className="field">
               <span className="field__label">Task title</span>
@@ -153,6 +183,22 @@ export default function TasksPage() {
               <Icon name="plus" size={17} /> {saving ? 'Creating…' : 'Create task'}
             </button>
           </form>
+
+          {/* AI Syllabus Extraction Block */}
+          <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border-color)' }}>
+            <span className="eyebrow">AI Automation</span>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Extract from Syllabus</h3>
+            <label className="button button--secondary" style={{ width: '100%', textAlign: 'center', display: 'block', cursor: uploading ? 'wait' : 'pointer' }}>
+              {uploading ? 'Extracting tasks via AI...' : 'Upload PDF Syllabus'}
+              <input
+                type="file"
+                accept="application/pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+                disabled={uploading}
+              />
+            </label>
+          </div>
         </section>
 
         <section className="panel">
@@ -166,7 +212,7 @@ export default function TasksPage() {
 
           {loading ? <Loader label="Loading tasks…" /> : null}
           {!loading && filteredTasks.length === 0 ? (
-            <EmptyState title="No tasks to show" description={apiConfig.endpoints.taskList ? 'Create your first academic task or change the search filter.' : 'Configure the backend task-list endpoint to load real academic tasks.'} />
+            <EmptyState title="No tasks to show" description="Create your first academic task or change the search filter." />
           ) : null}
 
           {!loading && filteredTasks.length > 0 ? (

@@ -77,19 +77,6 @@ export default function DashboardPage() {
             <Link className="button button--secondary" to="/planner">Build a study plan</Link>
           </div>
         </div>
-        <div className="integration-card">
-          <div className="integration-card__top">
-            <span>Backend integration</span>
-            <strong>{configuredCount}/{configurableKeys.length}</strong>
-          </div>
-          <div className="progress-track" aria-label={`${configuredCount} of ${configurableKeys.length} endpoints configured`}>
-            <span style={{ width: `${(configuredCount / configurableKeys.length) * 100}%` }} />
-          </div>
-          <p>
-            API paths were not included in the supplied project information. Configure only the routes your existing backend actually exposes.
-          </p>
-          <code>VITE_API_BASE_URL={apiConfig.baseURL || 'not configured'}</code>
-        </div>
       </section>
 
       <section className="section-block">
